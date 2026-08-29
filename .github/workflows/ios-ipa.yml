@@ -28,7 +28,9 @@ jobs:
           pod install
 
       - name: Build unsigned device app
+        shell: bash
         run: |
+          set -o pipefail
           xcodebuild \
             -workspace ios/MonteMove.xcworkspace \
             -scheme MonteMove \
@@ -40,14 +42,27 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
-            | tail -n 40
+            2>&1 | tee build.log | grep -E "^(Build|Compile|Link|PhaseScript|error:|warning: .*\.swift|\*\*)" | tail -n 120
 
       - name: Package unsigned IPA
+        shell: bash
         run: |
+          set -e
+          APP="build/Build/Products/Release-iphoneos/MonteMove.app"
+          test -d "$APP" || { echo "::error::App bundle not found — build failed"; exit 1; }
+          test -f "$APP/MonteMove" || { echo "::error::App bundle is empty/incomplete"; exit 1; }
           mkdir -p Payload
-          cp -r build/Build/Products/Release-iphoneos/MonteMove.app Payload/
+          cp -r "$APP" Payload/
           zip -qry montemove-unsigned.ipa Payload
           ls -lh montemove-unsigned.ipa
+
+      - name: Upload full build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-full-log
+          path: build.log
+          retention-days: 7
 
       - uses: actions/upload-artifact@v4
         with:
