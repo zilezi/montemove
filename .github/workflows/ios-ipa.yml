@@ -14,7 +14,7 @@ jobs:
       - name: Select newest Xcode
         run: |
           ls -d /Applications/Xcode*.app
-          LATEST=$(ls -d /Applications/Xcode*.app | sort -V | tail -1)
+          LATEST=$(ls -d /Applications/Xcode*.app | grep -vi beta | sort -V | tail -1)
           echo "Selecting $LATEST"
           sudo xcode-select -s "$LATEST"
           xcodebuild -version
